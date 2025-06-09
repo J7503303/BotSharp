@@ -1,4 +1,3 @@
-using BotSharp.Abstraction.Infrastructures;
 using BotSharp.Abstraction.Routing.Models;
 using System.Collections.Concurrent;
 
@@ -18,12 +17,15 @@ public partial class AgentService
         var agent = await GetAgent(id);
         if (agent == null) return null;
 
+        agent.TemplateDict = [];
+        agent.SecondaryInstructions = [];
+        agent.SecondaryFunctions = [];
+
         await InheritAgent(agent);
         OverrideInstructionByChannel(agent);
         AddOrUpdateParameters(agent);
 
         // Populate state into dictionary
-        agent.TemplateDict = new Dictionary<string, object>();
         PopulateState(agent.TemplateDict);
 
         // After agent is loaded
@@ -71,14 +73,10 @@ public partial class AgentService
 
         var state = _services.GetRequiredService<IConversationStateService>();
         var channel = state.GetState("channel");
-
-        if (string.IsNullOrWhiteSpace(channel))
-        {
-            return;
-        }
-
+        
         var found = instructions.FirstOrDefault(x => x.Channel.IsEqualTo(channel));
-        agent.Instruction = !string.IsNullOrWhiteSpace(found?.Instruction) ? found.Instruction : agent.Instruction;
+        var defaultInstruction = instructions.FirstOrDefault(x => x.Channel == string.Empty);
+        agent.Instruction = !string.IsNullOrWhiteSpace(found?.Instruction) ? found.Instruction : defaultInstruction?.Instruction;
     }
 
     private void PopulateState(Dictionary<string, object> dict)
